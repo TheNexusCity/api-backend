@@ -302,7 +302,6 @@ const emailRegex =
 const codeTestRegex = /^[0-9]{6}$/;
 const discordIdTestRegex = /^[0-9]+$/;
 const twitterIdTestRegex = /^@?(\w){1,15}$/;
-const walletAddressRegex = /^0x[a-fA-F0-9]{40}$/;
 
 function _randomString() {
   return Math.random()
@@ -375,7 +374,7 @@ process.on('exit', () => {
       const { method } = req;
       const { query, pathname: p } = url.parse(req.url, true);
 
-      console.log('got login', JSON.stringify({ method, p, query }, null, 2));
+      //console.log('got login', JSON.stringify({ method, p, query }, null, 2));
 
       if (method === 'POST') {
         let {
@@ -892,7 +891,7 @@ process.on('exit', () => {
             });
           }
         } else if (metamaskWalletAddress) {
-          if (walletAddressRegex.test(metamaskWalletAddress)) {
+          if (Web3.utils.isAddress(metamaskWalletAddress)) {
             const _getUser = async (id) => {
               const tokenItem = await ddb
                 .getItem({

@@ -696,6 +696,8 @@ process.on('exit', () => {
                   },
                 })
                 .promise();
+                
+              const email = discordid;  
               const tokens =
                 tokenItem.Item && tokenItem.Item.tokens
                   ? JSON.parse(tokenItem.Item.tokens.S)
@@ -708,6 +710,11 @@ process.on('exit', () => {
                 tokenItem.Item && tokenItem.Item.mnemonic
                   ? tokenItem.Item.mnemonic.S
                   : null;
+
+              let addr = tokenItem.Item && tokenItem.Item.addr ? tokenItem.Item.addr.S : null;
+              let state = tokenItem.Item && tokenItem.Item.state ? tokenItem.Item.state.S : null;
+           
+
               // let addr = (tokenItem.Item && tokenItem.Item.address) ? tokenItem.Item.address.S : null;
 
               // console.log('old item', tokenItem, {tokens, mnemonic});
@@ -717,29 +724,45 @@ process.on('exit', () => {
               while (tokens.length > 10) {
                 tokens.shift();
               }
+              
               if (!name) {
                 name = namegen(2).join('-');
               }
-              if (!mnemonic) {
+
+              if (!mnemonic || !addr) {
                 mnemonic = bip39.generateMnemonic();
-                /* const wallet = hdkey.fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic)).derivePath(`m/44'/60'/0'/0/0`).getWallet();
-              addr = wallet.getAddressString(); */
+                 const wallet = hdkey.fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic)).derivePath(`m/44'/60'/0'/0/0`).getWallet();
+                  addr = wallet.getAddressString(); 
+              }
+
+              if (!state) {
+                state = _randomString();
               }
 
               await ddb
-                .putItem({
+                .updateItem({
                   TableName: tableName,
                   Item: {
-                    email: { S: discordid + '.discordtoken' },
+                    email: { S: email + '.discordtoken' },
+                    name: { S: name },
+                    tokens: { S: JSON.stringify(tokens) },
                     mnemonic: { S: mnemonic },
-                    // address: {S: addr},
+                    address: { S: addr },
+                    addr: { S: addr },
+                    state: { S: state },
                   },
                 })
                 .promise();
 
               // respond
               _setCorsHeaders(res);
-              res.end(JSON.stringify({ mnemonic, username: name }));
+              res.end(JSON.stringify({ 
+                email,
+                token,
+                name,
+                mnemonic,
+                addr,
+                state }));
             } else {
               _respond(
                 403,
@@ -803,6 +826,9 @@ process.on('exit', () => {
                     const { id, username } = j;
 
                     if (id) {
+                      
+                      const token = crypto.randomBytes(32).toString('base64');
+
                       const _getUser = async (id) => {
                         const tokenItem = await ddb
                           .getItem({
@@ -813,40 +839,112 @@ process.on('exit', () => {
                           })
                           .promise();
 
-                        let mnemonic =
+                          const email = id;
+                          const tokens =
+                          tokenItem.Item && tokenItem.Item.tokens
+                            ? JSON.parse(tokenItem.Item.tokens.S)
+                            : [];
+                          let name =
+                          tokenItem.Item && tokenItem.Item.name
+                            ? tokenItem.Item.name.S
+                            : null;
+                          let mnemonic =
                           tokenItem.Item && tokenItem.Item.mnemonic
                             ? tokenItem.Item.mnemonic.S
                             : null;
+                          let addr =
+                          tokenItem.Item && tokenItem.Item.addr
+                            ? tokenItem.Item.addr.S
+                            : null;
+                          let state =
+                          tokenItem.Item && tokenItem.Item.state
+                            ? tokenItem.Item.state.S
+                            : null;
 
-                        return mnemonic ? { mnemonic } : null;
+                            tokens.push(token);
+                            while (tokens.length > 10) {
+                              tokens.shift();
+                            }
+
+                            if (!name) {
+                            name = namegen(2).join('-');
+                            }
+                            if (mnemonic && !addr) {
+                           
+                              const wallet = hdkey
+                                .fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic))
+                                .derivePath(`m/44'/60'/0'/0/0`)
+                                .getWallet();
+                              addr = wallet.getAddressString();
+                            }
+                            if (!state) {
+                                state = _randomString();
+                            }
+
+
+                            await ddb
+                            .putItem({
+                              TableName: tableName,
+                              Item: {
+                                email: { S: email + '.discordtoken' },
+                                name: { S: name },
+                                tokens: { S: JSON.stringify(tokens) },
+                                mnemonic: { S: mnemonic },
+                                address: { S: addr },
+                                addr: { S: addr },
+                                state: { S: state },
+                              },
+                            })
+                            .promise(); 
+
+
+                        return mnemonic ? { 
+                          email,
+                          token,
+                          name,
+                          mnemonic,
+                          addr,
+                          state 
+                         } : null;
                       };
                       const _genKey = async (id) => {
+                        
+                        const email = id;
                         const mnemonic = bip39.generateMnemonic();
                         const wallet = hdkey
                           .fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic))
                           .derivePath(`m/44'/60'/0'/0/0`)
                           .getWallet();
-                        const address = wallet.getAddressString();
-
+                        const addr = wallet.getAddressString();
+                        const tokens = [token];
+                        const state = _randomString();
                         await ddb
                           .putItem({
                             TableName: tableName,
                             Item: {
-                              email: { S: id + '.discordtoken' },
-                              mnemonic: { S: mnemonic },
-                              address: { S: address },
+                              email: { S: email + '.discordtoken' },
                               name: { S: username },
+                              tokens: { S: JSON.stringify(tokens) },
+                              mnemonic: { S: mnemonic },
+                              address: { S: addr },
+                              addr: { S: addr },
+                              state: { S: state },
                             },
                           })
                           .promise();
-                        return { mnemonic };
+                        return { 
+                          email,
+                          token,
+                          name: username,
+                          mnemonic,
+                          addr,
+                          state };
                       };
 
                       const user = (await _getUser(id)) || (await _genKey(id));
-                      const { mnemonic } = user;
-
+                     // const { mnemonic } = user;
                       _setCorsHeaders(res);
-                      res.end(JSON.stringify({ mnemonic, username: username }));
+                      res.end(JSON.stringify(user));
                     } else {
                       console.warn('discord oauth failed', j);
                       _respond(
@@ -892,7 +990,12 @@ process.on('exit', () => {
           }
         } else if (metamaskWalletAddress) {
           if (Web3.utils.isAddress(metamaskWalletAddress)) {
+            const token = crypto.randomBytes(32).toString('base64');
+
             const _getUser = async (id) => {
+
+
+              
               const tokenItem = await ddb
                 .getItem({
                   TableName: tableName,
@@ -902,44 +1005,122 @@ process.on('exit', () => {
                 })
                 .promise();
 
-              let mnemonic =
+                
+                const email = id;
+                const tokens =
+                tokenItem.Item && tokenItem.Item.tokens
+                  ? JSON.parse(tokenItem.Item.tokens.S)
+                  : [];
+                let name =
+                tokenItem.Item && tokenItem.Item.name
+                  ? tokenItem.Item.name.S
+                  : null;
+                let mnemonic =
                 tokenItem.Item && tokenItem.Item.mnemonic
                   ? tokenItem.Item.mnemonic.S
                   : null;
+                let addr =
+                tokenItem.Item && tokenItem.Item.addr
+                  ? tokenItem.Item.addr.S
+                  : null;
+                let state =
+                tokenItem.Item && tokenItem.Item.state
+                  ? tokenItem.Item.state.S
+                  : null;
 
-              return mnemonic ? { mnemonic } : null;
+                  tokens.push(token);
+                  while (tokens.length > 10) {
+                    tokens.shift();
+                  }
+
+                  if (!name) {
+                  name = namegen(2).join('-');
+                  }
+                  if (mnemonic && !addr) {
+                 
+                    const wallet = hdkey
+                      .fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic))
+                      .derivePath(`m/44'/60'/0'/0/0`)
+                      .getWallet();
+                    addr = wallet.getAddressString();
+                  }
+                  if (!state) {
+                      state = _randomString();
+                  }
+
+                  if(mnemonic){
+                  await ddb
+                  .putItem({
+                    TableName: tableName,
+                    Item: {
+                      email: { S: email + '.wallet' },
+                      name: { S: name },
+                      tokens: { S: JSON.stringify(tokens) },
+                      mnemonic: { S: mnemonic },
+                      address: { S: addr },
+                      addr: { S: addr },
+                      state: { S: state },
+                    },
+                  })
+                  .promise(); 
+                  
+
+              return { 
+                email,
+                token,
+                name,
+                mnemonic,
+                addr,
+                state 
+               };
+              }else{
+                return null;
+              }
+
             };
             const _genKey = async (id) => {
-              const mnemonic = bip39.generateMnemonic();
+              const email = id;
+                        const mnemonic = bip39.generateMnemonic();
+                        const wallet = hdkey
+                          .fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic))
+                          .derivePath(`m/44'/60'/0'/0/0`)
+                          .getWallet();
+                        const addr = wallet.getAddressString();
+                        const tokens = [token];
+                        const state = _randomString();
+                        const name = namegen(2).join('-');
 
-              const wallet = hdkey
-                .fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic))
-                .derivePath(`m/44'/60'/0'/0/0`)
-                .getWallet();
-              const address = wallet.getAddressString();
+                        await ddb
+                          .putItem({
+                            TableName: tableName,
+                            Item: {
+                              email: { S: email + '.wallet' },
+                              name: { S: name },
+                              tokens: { S: JSON.stringify(tokens) },
+                              mnemonic: { S: mnemonic },
+                              address: { S: addr },
+                              addr: { S: addr },
+                              state: { S: state },
+                            },
+                          })
+                          .promise();
 
-              await ddb
-                .putItem({
-                  TableName: tableName,
-                  Item: {
-                    email: { S: id + '.wallet' },
-                    mnemonic: { S: mnemonic },
-                    address: { S: address },
-                  },
-                })
-                .promise();
-              return { mnemonic };
+                        return { 
+                          email,
+                          token,
+                          name,
+                          mnemonic,
+                          addr,
+                          state };
             };
 
             const user =
               (await _getUser(metamaskWalletAddress)) ||
               (await _genKey(metamaskWalletAddress));
-            const { mnemonic } = user;
+           // const { mnemonic } = user;
 
             _setCorsHeaders(res);
-            res.end(
-              JSON.stringify({ mnemonic, username: metamaskWalletAddress })
-            );
+            res.end(JSON.stringify(user));
           } else {
             _respond(
               403,
@@ -2984,6 +3165,7 @@ try {
   };
 
   let redisClient = null;
+
   const _tryConnectRedis = () => {
     redisConnect(redisPort, redisHost)
       .then(() => {

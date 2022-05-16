@@ -89,6 +89,9 @@ const discordClientSecret =
 
 const redisHost = process.env.redisHost || config.redisHost;
 const redisPort = process.env.redisPort || config.redisPort;
+const redisKey = process.env.redisKey || config.redisKey;
+
+const sourceEmail = process.env.sourceEmail || config.sourceEmail 
 
 const awsConfig = new AWS.Config({
   credentials: new AWS.Credentials({
@@ -106,9 +109,12 @@ const ses = new AWS.SES(
       accessKeyId,
       secretAccessKey,
     }),
-    region: 'us-west-2',
+    region: 'us-west-1',
   })
 );
+
+
+
 /* const apiKeyCache = new LRU({
   max: 1024,
   maxAge: 60 * 1000,
@@ -643,7 +649,7 @@ process.on('exit', () => {
                     Data: `Verification code for Webaverse`,
                   },
                 },
-                Source: 'noreply@exokit.org',
+                Source: sourceEmail,
               };
 
               const data = await ses.sendEmail(params).promise();
@@ -3167,7 +3173,7 @@ try {
   let redisClient = null;
 
   const _tryConnectRedis = () => {
-    redisConnect(redisPort, redisHost)
+    redisConnect(redisPort, redisHost, redisKey)
       .then(() => {
         redisClient = getRedisClient();
         console.log('connected to redis');

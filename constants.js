@@ -31,7 +31,7 @@ const tableNames = {
   polygonNft: 'polygon-cache-nft',
   testnetpolygonAccount: 'testnetpolygon-cache-account',
   testnetpolygonNft: 'testnetpolygon-cache-nft',
-  WebaverseERC721: "WebaverseERC721-cache-tokenids",
+  WebaverseERC721: 'WebaverseERC721-cache-tokenids',
 };
 const redisPrefixes = (() => {
   const result = {};
@@ -45,7 +45,6 @@ const polygonVigilKey = `1bdde9289621d9d420488a9804254f4a958e128b`;
 const ethereumHost = 'ethereum.exokit.org';
 const storageHost = 'https://ipfs.exokit.org';
 const mainnetSignatureMessage = `Connecting mainnet address.`;
-const cacheHostUrl = 'cache.webaverse.com';
 module.exports = {
   MAX_SIZE,
   accountKeys,
@@ -57,5 +56,4 @@ module.exports = {
   ethereumHost,
   storageHost,
   mainnetSignatureMessage,
-  cacheHostUrl,
 };
